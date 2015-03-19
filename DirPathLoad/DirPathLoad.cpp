@@ -112,7 +112,7 @@ static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
 		strlen(user),
 		(const OraText*)pass,
 		strlen(pass),
-		(const OraText*)db,
+		(const OraText*)db, // tnsnames.oraを見に行く。"host:port/db"の形式であればtnsnames.ora不要。
 		strlen(db)))) {
 		return ERROR;
 	}
