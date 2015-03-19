@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include <string.h>
 #include <stdio.h>
 #include <oci.h>
@@ -16,6 +17,7 @@ typedef struct _CONTEXT {
 	OCIDirPathStream *dpstr;
 	char *buffer;
 	FILE *csv;
+	char message[512];
 } CONTEXT;
 
 typedef struct _COL_DEF {
@@ -27,30 +29,34 @@ typedef struct _COL_DEF {
 
 static int check(CONTEXT *context, const char* message, sword result)
 {
+	strcpy(context->message, "");
+
 	if (result == OCI_ERROR) {
-		printf("%s failed.\r\n", message);
-		OraText buffer[512];
+		sprintf(context->message, "OCI : %s failed.", message);
 		sb4 errCode;
-		if (OCIErrorGet(context->err, 1, NULL, &errCode, buffer, 512, OCI_HTYPE_ERROR) != OCI_SUCCESS) {
-			printf("OCIErrorGet failed.\r\n");
+		OraText text[512];
+		if (OCIErrorGet(context->err, 1, NULL, &errCode, text, sizeof(text) / sizeof(OraText), OCI_HTYPE_ERROR) != OCI_SUCCESS) {
+			strcat(context->message, " OCIErrorGet failed.");
 		} else {
-			printf("%d : %s\r\n", errCode, buffer);
+			//printf("%d : %s\r\n", errCode, text);
+			strcat(context->message, " ");
+			strncat(context->message, (const char*)text, sizeof(context->message) - strlen(context->message) - 1);
 		}
 		return ERROR;
 	}
 
 	if (result == OCI_INVALID_HANDLE) {
-		printf("%s failed : invalid handle.\r\n", message);
+		sprintf(context->message, "OCI : %s failed : invalid handle.", message);
 		return ERROR;
 	}
 
 	if (result == OCI_NO_DATA) {
-		printf("%s failed : no data.\r\n", message);
+		sprintf("OCI : %s failed : no data.", message);
 		return ERROR;
 	}
 
 	if (result != OCI_SUCCESS) {
-		printf("%s failed : %d\r\n", message, result);
+		sprintf("OCI : %s failed : %d.", message, result);
 		return ERROR;
 	}
 
@@ -397,12 +403,9 @@ int rollback(CONTEXT *context)
 }
 
 
-static int test(const char *db, const char *user, const char *pass, const char *csvFileName)
+static int test(CONTEXT *context, const char *db, const char *user, const char *pass, const char *csvFileName)
 {
-	CONTEXT context;
-
-	if (prepareDirPathCtx(&context, db, user, pass)) {
-		freeHandles(&context);
+	if (prepareDirPathCtx(context, db, user, pass)) {
 		return ERROR;
 	}
 
@@ -423,22 +426,17 @@ static int test(const char *db, const char *user, const char *pass, const char *
 		{"VALUE10", SQLT_CHR, 60},
 		{NULL}
 	};
-	if (prepareDirPathStream(&context, "EXAMPLE", colDefs)) {
-		freeHandles(&context);
+	if (prepareDirPathStream(context, "EXAMPLE", colDefs)) {
 		return ERROR;
 	}
 
-	if (loadCSV(&context, colDefs, csvFileName)) {
-		freeHandles(&context);
+	if (loadCSV(context, colDefs, csvFileName)) {
 		return ERROR;
 	}
 
-	if (commit(&context)) {
-		freeHandles(&context);
+	if (commit(context)) {
 		return ERROR;
 	}
-
-	freeHandles(&context);
 
 	return SUCCEEDED;
 }
@@ -451,7 +449,12 @@ int main(int argc, char* argv[])
 		return ERROR;
 	}
 
-	test(argv[1], argv[2], argv[3], argv[4]);
-	return SUCCEEDED;
+	CONTEXT context;
+	int result = test(&context, argv[1], argv[2], argv[3], argv[4]);
+	if (result == ERROR) {
+		printf("%s\r\n", context.message);
+	}
+	freeHandles(&context);
+	return result;
 }
 
