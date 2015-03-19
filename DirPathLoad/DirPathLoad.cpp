@@ -4,27 +4,7 @@
 #include <oci.h>
 #include <malloc.h>
 #include <time.h>
-
-#define ERROR -1
-#define SUCCEEDED 0
-
-typedef struct _CONTEXT {
-	OCIEnv     *env;
-	OCIDirPathCtx *dp;
-	OCISvcCtx *svc;
-	OCIError *err;
-	OCIDirPathColArray *dpca;
-	OCIDirPathStream *dpstr;
-	char *buffer;
-	FILE *csv;
-	char message[512];
-} CONTEXT;
-
-typedef struct _COL_DEF {
-	const char *name;
-	ub4 type;
-	ub4 size;
-} COL_DEF;
+#include "DirPathLoad.h"
 
 
 static int check(CONTEXT *context, const char* message, sword result)
