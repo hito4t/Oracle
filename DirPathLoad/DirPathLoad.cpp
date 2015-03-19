@@ -7,7 +7,7 @@
 #define ERROR -1
 #define SUCCEEDED 0
 
-struct HANDLES {
+typedef struct _CONTEXT {
 	OCIEnv     *env;
 	OCIDirPathCtx *dp;
 	OCISvcCtx *svc;
@@ -16,24 +16,22 @@ struct HANDLES {
 	OCIDirPathStream *dpstr;
 	char *buffer;
 	FILE *csv;
-} handles;
+} CONTEXT;
 
-struct COL_DEF {
+typedef struct _COL_DEF {
 	const char *name;
 	ub4 type;
 	ub4 size;
-	ub4 precision;
-	ub4 scale;
-};
+} COL_DEF;
 
 
-static int check(const char* message, sword result)
+static int check(CONTEXT *context, const char* message, sword result)
 {
 	if (result == OCI_ERROR) {
 		printf("%s failed.\r\n", message);
 		OraText buffer[512];
 		sb4 errCode;
-		if (OCIErrorGet(handles.err, 1, NULL, &errCode, buffer, 512, OCI_HTYPE_ERROR) != OCI_SUCCESS) {
+		if (OCIErrorGet(context->err, 1, NULL, &errCode, buffer, 512, OCI_HTYPE_ERROR) != OCI_SUCCESS) {
 			printf("OCIErrorGet failed.\r\n");
 		} else {
 			printf("%d : %s\r\n", errCode, buffer);
@@ -59,21 +57,21 @@ static int check(const char* message, sword result)
 	return SUCCEEDED;
 }
 
-static void freeHandles()
+void freeHandles(CONTEXT *context)
 {
-	if (handles.csv != NULL) fclose(handles.csv);
-	if (handles.buffer != NULL) free(handles.buffer);
-	if (handles.dpstr != NULL) OCIHandleFree(handles.dpstr, OCI_HTYPE_DIRPATH_STREAM);
-	if (handles.dpca != NULL) OCIHandleFree(handles.dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY);
-	if (handles.dp != NULL) OCIHandleFree(handles.dp, OCI_HTYPE_DIRPATH_CTX);
-	if (handles.svc != NULL) OCIHandleFree(handles.svc, OCI_HTYPE_SVCCTX);
-	if (handles.err != NULL) OCIHandleFree(handles.err, OCI_HTYPE_ERROR);
-	if (handles.env != NULL) OCIHandleFree(handles.env, OCI_HTYPE_ENV);
+	if (context->csv != NULL) fclose(context->csv);
+	if (context->buffer != NULL) free(context->buffer);
+	if (context->dpstr != NULL) OCIHandleFree(context->dpstr, OCI_HTYPE_DIRPATH_STREAM);
+	if (context->dpca != NULL) OCIHandleFree(context->dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY);
+	if (context->dp != NULL) OCIHandleFree(context->dp, OCI_HTYPE_DIRPATH_CTX);
+	if (context->svc != NULL) OCIHandleFree(context->svc, OCI_HTYPE_SVCCTX);
+	if (context->err != NULL) OCIHandleFree(context->err, OCI_HTYPE_ERROR);
+	if (context->env != NULL) OCIHandleFree(context->env, OCI_HTYPE_ENV);
 }
 
-static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
+int prepareDirPathCtx(CONTEXT *context, const char *db, const char *user, const char *pass)
 {
-	if (check("OCIEnvCreate", OCIEnvCreate(&handles.env, 
+	if (check(context, "OCIEnvCreate", OCIEnvCreate(&context->env, 
 		OCI_THREADED|OCI_OBJECT,
 		(void *)0,
 		0, 
@@ -85,9 +83,9 @@ static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
 	}
 
 	// エラー・ハンドル
-	if (check("OCIHandleAlloc(OCI_HTYPE_ERROR)", OCIHandleAlloc(
-		handles.env, 
-		(void **)&handles.err,
+	if (check(context, "OCIHandleAlloc(OCI_HTYPE_ERROR)", OCIHandleAlloc(
+		context->env, 
+		(void **)&context->err,
         OCI_HTYPE_ERROR,
 		(size_t)0,
 		(void **)0))) {
@@ -95,9 +93,9 @@ static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
 	}
 
 	// サービス・コンテキスト
-	if (check("OCIHandleAlloc(OCI_HTYPE_SVCCTX)", OCIHandleAlloc(
-		handles.env, 
-		(void **)&handles.svc,
+	if (check(context, "OCIHandleAlloc(OCI_HTYPE_SVCCTX)", OCIHandleAlloc(
+		context->env, 
+		(void **)&context->svc,
         OCI_HTYPE_SVCCTX,
 		(size_t)0,
 		(void **)0))) {
@@ -105,9 +103,9 @@ static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
 	}
 
 	// ログオン
-	if (check("OCILogon", OCILogon(handles.env,
-		handles.err,
-		&handles.svc,
+	if (check(context, "OCILogon", OCILogon(context->env,
+		context->err,
+		&context->svc,
 		(const OraText*)user,
 		strlen(user),
 		(const OraText*)pass,
@@ -118,9 +116,9 @@ static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
 	}
 
 	// ダイレクト・パス・コンテキスト
-	if (check("OCIHandleAlloc(OCI_HTYPE_DIRPATH_CTX)", OCIHandleAlloc(
-		handles.env, 
-		(void **)&handles.dp,
+	if (check(context, "OCIHandleAlloc(OCI_HTYPE_DIRPATH_CTX)", OCIHandleAlloc(
+		context->env, 
+		(void **)&context->dp,
         OCI_HTYPE_DIRPATH_CTX,
 		(size_t)0,
 		(void **)0))) {
@@ -130,57 +128,59 @@ static int prepareDirPathCtx(const char *db, const char *user, const char *pass)
 	return SUCCEEDED;
 }
 
-static int prepareDirPathStream(const char *table, struct COL_DEF *colDefs) {
+int prepareDirPathStream(CONTEXT *context, const char *table, COL_DEF *colDefs) {
 	// ロードオブジェクト名
-	if (check("OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(handles.dp, OCI_HTYPE_DIRPATH_CTX, (void*)table, strlen(table), OCI_ATTR_NAME, handles.err))) {
+	if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, (void*)table, strlen(table), OCI_ATTR_NAME, context->err))) {
 		return ERROR;
 	}
 	ub2 cols;
 	for (cols = 0; colDefs[cols].name != NULL; cols++) ;
 
-	if (check("OCIAttrSet(OCI_ATTR_NUM_COLS)", OCIAttrSet(handles.dp, OCI_HTYPE_DIRPATH_CTX, &cols, sizeof(ub2), OCI_ATTR_NUM_COLS, handles.err))) {
+	if (check(context, "OCIAttrSet(OCI_ATTR_NUM_COLS)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, &cols, sizeof(ub2), OCI_ATTR_NUM_COLS, context->err))) {
 		return ERROR;
 	}
 
 	OCIParam *columns;
-	if (check("OCIAttrGet(OCI_ATTR_LIST_COLUMNS)", OCIAttrGet(handles.dp, OCI_HTYPE_DIRPATH_CTX, &columns, (ub4*)0, OCI_ATTR_LIST_COLUMNS, handles.err))) {
+	if (check(context, "OCIAttrGet(OCI_ATTR_LIST_COLUMNS)", OCIAttrGet(context->dp, OCI_HTYPE_DIRPATH_CTX, &columns, (ub4*)0, OCI_ATTR_LIST_COLUMNS, context->err))) {
 		return ERROR;
 	}
 
 	for (int i = 0; i < cols; i++) {
 		OCIParam *column;
-		if (check("OCIParamGet(OCI_DTYPE_PARAM)", OCIParamGet(columns, OCI_DTYPE_PARAM, handles.err, (void**)&column, i + 1))) {
+		if (check(context, "OCIParamGet(OCI_DTYPE_PARAM)", OCIParamGet(columns, OCI_DTYPE_PARAM, context->err, (void**)&column, i + 1))) {
 			return ERROR;
 		}
-		if (check("OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(column, OCI_DTYPE_PARAM, (void*)colDefs[i].name, strlen(colDefs[i].name), OCI_ATTR_NAME, handles.err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(column, OCI_DTYPE_PARAM, (void*)colDefs[i].name, strlen(colDefs[i].name), OCI_ATTR_NAME, context->err))) {
 			return ERROR;
 		}
-		if (check("OCIAttrSet(OCI_ATTR_DATA_TYPE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].type, sizeof(ub4), OCI_ATTR_DATA_TYPE, handles.err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_DATA_TYPE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].type, sizeof(ub4), OCI_ATTR_DATA_TYPE, context->err))) {
 			return ERROR;
 		}
-		if (check("OCIAttrSet(OCI_ATTR_DATA_SIZE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].size, sizeof(ub4), OCI_ATTR_DATA_SIZE, handles.err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_DATA_SIZE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].size, sizeof(ub4), OCI_ATTR_DATA_SIZE, context->err))) {
 			return ERROR;
 		}
-		if (check("OCIAttrSet(OCI_ATTR_PRECISION)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].precision, sizeof(ub4), OCI_ATTR_PRECISION, handles.err))) {
+		/*
+		if (check(context, "OCIAttrSet(OCI_ATTR_PRECISION)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].precision, sizeof(ub4), OCI_ATTR_PRECISION, context->err))) {
 			return ERROR;
 		}
-		if (check("OCIAttrSet(OCI_ATTR_SCALE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].scale, sizeof(ub4), OCI_ATTR_SCALE, handles.err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_SCALE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].scale, sizeof(ub4), OCI_ATTR_SCALE, context->err))) {
 			return ERROR;
 		}
+		*/
 
-		if (check("OCIDescriptorFree(OCI_DTYPE_PARAM)", OCIDescriptorFree(column, OCI_DTYPE_PARAM))) {
+		if (check(context, "OCIDescriptorFree(OCI_DTYPE_PARAM)", OCIDescriptorFree(column, OCI_DTYPE_PARAM))) {
 			return ERROR;
 		}
 	}
 
-	if (check("OCIDirPathPrepare", OCIDirPathPrepare(handles.dp, handles.svc, handles.err))) {
+	if (check(context, "OCIDirPathPrepare", OCIDirPathPrepare(context->dp, context->svc, context->err))) {
 		return ERROR;
 	}
 
 	// ダイレクト・パス列配列
-	if (check("OCIHandleAlloc(OCI_HTYPE_DIRPATH_COLUMN_ARRAY)", OCIHandleAlloc(
-		handles.dp, 
-		(void **)&handles.dpca,
+	if (check(context, "OCIHandleAlloc(OCI_HTYPE_DIRPATH_COLUMN_ARRAY)", OCIHandleAlloc(
+		context->dp, 
+		(void **)&context->dpca,
         OCI_HTYPE_DIRPATH_COLUMN_ARRAY,
 		(size_t)0,
 		(void **)0))) {
@@ -188,9 +188,9 @@ static int prepareDirPathStream(const char *table, struct COL_DEF *colDefs) {
 	}
 
 	// ダイレクト・パス・ストリーム
-	if (check("OCIHandleAlloc(OCI_HTYPE_DIRPATH_STREAM)", OCIHandleAlloc(
-		handles.dp, 
-		(void **)&handles.dpstr,
+	if (check(context, "OCIHandleAlloc(OCI_HTYPE_DIRPATH_STREAM)", OCIHandleAlloc(
+		context->dp, 
+		(void **)&context->dpstr,
         OCI_HTYPE_DIRPATH_STREAM,
 		(size_t)0,
 		(void **)0))) {
@@ -221,21 +221,21 @@ static int strToSqlInt(const char *s, int size, char* buffer)
 	return SUCCEEDED;
 }
 
-static int loadRows(ub4 rowCount)
+static int loadRows(CONTEXT *context, ub4 rowCount)
 {
 	for (ub4 offset = 0; offset < rowCount;) {
-		sword result = OCIDirPathColArrayToStream(handles.dpca, handles.dp, handles.dpstr, handles.err, rowCount, offset);
+		sword result = OCIDirPathColArrayToStream(context->dpca, context->dp, context->dpstr, context->err, rowCount, offset);
 		if (result != OCI_SUCCESS && result != OCI_CONTINUE) {
-			check("OCIDirPathColArrayToStream", result);
+			check(context, "OCIDirPathColArrayToStream", result);
 			return ERROR;
 		}
 
 		ub4 temp2;
-		if (check("OCIAttrGet(OCI_ATTR_ROW_COUNT)", OCIAttrGet(handles.dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &temp2, 0, OCI_ATTR_ROW_COUNT, handles.err))) {
+		if (check(context, "OCIAttrGet(OCI_ATTR_ROW_COUNT)", OCIAttrGet(context->dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &temp2, 0, OCI_ATTR_ROW_COUNT, context->err))) {
 			return ERROR;
 		}
 
-		if (check("OCIDirPathLoadStream", OCIDirPathLoadStream(handles.dp, handles.dpstr, handles.err))) {
+		if (check(context, "OCIDirPathLoadStream", OCIDirPathLoadStream(context->dp, context->dpstr, context->err))) {
 			return ERROR;
 		}
 
@@ -243,13 +243,13 @@ static int loadRows(ub4 rowCount)
 			offset = rowCount;
 		} else {
 			ub4 temp;
-			if (check("OCIAttrGet(OCI_ATTR_ROW_COUNT)", OCIAttrGet(handles.dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &temp, 0, OCI_ATTR_ROW_COUNT, handles.err))) {
+			if (check(context, "OCIAttrGet(OCI_ATTR_ROW_COUNT)", OCIAttrGet(context->dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &temp, 0, OCI_ATTR_ROW_COUNT, context->err))) {
 				return ERROR;
 			}
 			offset += temp;
 		}
 
-		if (check("OCIDirPathStreamReset", OCIDirPathStreamReset(handles.dpstr, handles.err))) {
+		if (check(context, "OCIDirPathStreamReset", OCIDirPathStreamReset(context->dpstr, context->err))) {
 			return ERROR;
 		}
 	}
@@ -258,7 +258,7 @@ static int loadRows(ub4 rowCount)
 }
 
 
-static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
+int loadCSV(CONTEXT *context, COL_DEF *colDefs, const char *csvFileName)
 {
 	time_t time0, time1;
 	time(&time0);
@@ -267,12 +267,12 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 	long csvTime = 0;
 	long loadTime = 0;
 
-	if ((handles.csv = fopen(csvFileName, "r")) == NULL) {
+	if ((context->csv = fopen(csvFileName, "r")) == NULL) {
 		return ERROR;
 	}
 
 	ub4 maxRows = 0;
-	if (check("OCIAttrGet(OCI_ATTR_NUM_ROWS)", OCIAttrGet(handles.dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &maxRows, 0, OCI_ATTR_NUM_ROWS, handles.err))) {
+	if (check(context, "OCIAttrGet(OCI_ATTR_NUM_ROWS)", OCIAttrGet(context->dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &maxRows, 0, OCI_ATTR_NUM_ROWS, context->err))) {
 		return ERROR;
 	}
 	printf("OCI_HTYPE_DIRPATH_COLUMN_ARRAY.OCI_ATTR_NUM_ROWS = %d\r\n", maxRows);
@@ -282,15 +282,15 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 		rowSize += colDefs[i].size;
 	}
 
-	if ((handles.buffer = (char*)malloc(rowSize * maxRows)) == NULL) {
+	if ((context->buffer = (char*)malloc(rowSize * maxRows)) == NULL) {
 		return ERROR;
 	}
-	char *current = handles.buffer;
+	char *current = context->buffer;
 
 	// TODO:1000文字以上の行は想定していない
 	char line[1000];
 	int row = 0;
-	while (fgets(line, sizeof(line), handles.csv) != NULL) {
+	while (fgets(line, sizeof(line), context->csv) != NULL) {
 		int len = strlen(line);
 		int col = 0;
 		for (const char *p = line; p < line + len;) {
@@ -320,7 +320,7 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 				return ERROR;
 			}
 
-			if (check("OCIDirPathColArrayEntrySet", OCIDirPathColArrayEntrySet(handles.dpca, handles.err, row, col, (ub1*)current, size, OCI_DIRPATH_COL_COMPLETE))) {
+			if (check(context, "OCIDirPathColArrayEntrySet", OCIDirPathColArrayEntrySet(context->dpca, context->err, row, col, (ub1*)current, size, OCI_DIRPATH_COL_COMPLETE))) {
 				return ERROR;
 			}
 
@@ -334,14 +334,14 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 			clock1 = clock();
 			csvTime += clock1 - clock0;
 
-			if (loadRows(row)) {
+			if (loadRows(context, row)) {
 				return ERROR;
 			}
 
 			clock0 = clock();
 			loadTime += clock0 - clock1;
 
-			current = handles.buffer;
+			current = context->buffer;
 			row = 0;
 		}
 	}
@@ -350,7 +350,7 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 		clock1 = clock();
 		csvTime += clock1 - clock0;
 
-		if (loadRows(row)) {
+		if (loadRows(context, row)) {
 			return ERROR;
 		}
 
@@ -358,11 +358,11 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 		loadTime += clock0 - clock1;
 	}
 
-	free(handles.buffer);
-	handles.buffer = NULL;
+	free(context->buffer);
+	context->buffer = NULL;
 
-	fclose(handles.csv);
-	handles.csv = NULL;
+	fclose(context->csv);
+	context->csv = NULL;
 
 	time(&time1);
 	printf("End at : %s (csv : %d ms, load : %d ms)\r\n", ctime(&time1), csvTime, loadTime);
@@ -370,13 +370,26 @@ static int loadCSV(struct COL_DEF *colDefs, const char *csvFileName)
 	return SUCCEEDED;
 }
 
-static int commit() 
+int commit(CONTEXT *context) 
 {
-	if (check("OCIDirPathFinish", OCIDirPathFinish(handles.dp, handles.err))) {
+	if (check(context, "OCIDirPathFinish", OCIDirPathFinish(context->dp, context->err))) {
 		return ERROR;
 	}
 
-	if (check("OCILogoff", OCILogoff(handles.svc, handles.err))) {
+	if (check(context, "OCILogoff", OCILogoff(context->svc, context->err))) {
+		return ERROR;
+	}
+
+	return SUCCEEDED;
+}
+
+int rollback(CONTEXT *context) 
+{
+	if (check(context, "OCIDirPathFinish", OCIDirPathAbort(context->dp, context->err))) {
+		return ERROR;
+	}
+
+	if (check(context, "OCILogoff", OCILogoff(context->svc, context->err))) {
 		return ERROR;
 	}
 
@@ -386,44 +399,46 @@ static int commit()
 
 static int test(const char *db, const char *user, const char *pass, const char *csvFileName)
 {
-	if (prepareDirPathCtx(db, user, pass)) {
-		freeHandles();
+	CONTEXT context;
+
+	if (prepareDirPathCtx(&context, db, user, pass)) {
+		freeHandles(&context);
 		return ERROR;
 	}
 
-	struct COL_DEF colDefs[] = {
-		{"ID", SQLT_INT, 4, 8, 0},
-		//{"ID", SQLT_CHR, 8, 8},
-		{"NUM", SQLT_INT, 4, 12, 0},
-		//{"NUM", SQLT_CHR, 12, 12},
-		{"VALUE1", SQLT_CHR, 60, 60},
-		{"VALUE2", SQLT_CHR, 60, 60},
-		{"VALUE3", SQLT_CHR, 60, 60},
-		{"VALUE4", SQLT_CHR, 60, 60},
-		{"VALUE5", SQLT_CHR, 60, 60},
-		{"VALUE6", SQLT_CHR, 60, 60},
-		{"VALUE7", SQLT_CHR, 60, 60},
-		{"VALUE8", SQLT_CHR, 60, 60},
-		{"VALUE9", SQLT_CHR, 60, 60},
-		{"VALUE10", SQLT_CHR, 60, 60},
+	COL_DEF colDefs[] = {
+		{"ID", SQLT_INT, 4},
+		//{"ID", SQLT_CHR, 8},
+		{"NUM", SQLT_INT, 4},
+		//{"NUM", SQLT_CHR, 12},
+		{"VALUE1", SQLT_CHR, 60},
+		{"VALUE2", SQLT_CHR, 60},
+		{"VALUE3", SQLT_CHR, 60},
+		{"VALUE4", SQLT_CHR, 60},
+		{"VALUE5", SQLT_CHR, 60},
+		{"VALUE6", SQLT_CHR, 60},
+		{"VALUE7", SQLT_CHR, 60},
+		{"VALUE8", SQLT_CHR, 60},
+		{"VALUE9", SQLT_CHR, 60},
+		{"VALUE10", SQLT_CHR, 60},
 		{NULL}
 	};
-	if (prepareDirPathStream("EXAMPLE", colDefs)) {
-		freeHandles();
+	if (prepareDirPathStream(&context, "EXAMPLE", colDefs)) {
+		freeHandles(&context);
 		return ERROR;
 	}
 
-	if (loadCSV(colDefs, csvFileName)) {
-		freeHandles();
+	if (loadCSV(&context, colDefs, csvFileName)) {
+		freeHandles(&context);
 		return ERROR;
 	}
 
-	if (commit()) {
-		freeHandles();
+	if (commit(&context)) {
+		freeHandles(&context);
 		return ERROR;
 	}
 
-	freeHandles();
+	freeHandles(&context);
 
 	return SUCCEEDED;
 }
