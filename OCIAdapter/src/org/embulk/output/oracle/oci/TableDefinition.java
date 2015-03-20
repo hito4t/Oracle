@@ -3,7 +3,7 @@ package org.embulk.output.oracle.oci;
  * $Id: typical.epf 2627 2010-03-18 01:40:13Z tiba $
  */
 
-public class TableInfo {
+public class TableDefinition {
 	public String tableName;
-	public ColumnInfo[] columns;
+	public ColumnDefinition[] columns = {};
 }

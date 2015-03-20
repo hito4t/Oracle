@@ -9,12 +9,22 @@ import java.sql.SQLException;
 public class OCITest {
 
 	public static void main(String[] args) throws Exception {
+		ColumnDefinition[] c = new ColumnDefinition[4];
+		Class c1 = ColumnDefinition.class;
+		Class cc = c.getClass();
+
 		OCI oci = new OCI();
 		byte[] context = oci.createContext();
 		boolean succeeded = false;
 
 		try {
-			if (!oci.open(context, "TESTDB2", "TEST_USER", "test_pw", null)) {
+			if (!oci.open(context, "TESTDB", "TEST_USER", "test_pw")) {
+				return;
+			}
+
+			TableDefinition tableDefinition = new TableDefinition();
+			tableDefinition.tableName = "EXAMPLE";
+			if (!oci.prepareLoad(context, tableDefinition)) {
 				return;
 			}
 
@@ -25,9 +35,6 @@ public class OCITest {
 		} finally {
 			if (!succeeded) {
 				byte[] message = oci.getLasetMessage(context);
-				for (byte bb : message) {
-					System.out.print(String.format("%02X ", bb));
-				}
 				String s1 = new String(message, "MS932");
 				System.out.println(s1);
 			}

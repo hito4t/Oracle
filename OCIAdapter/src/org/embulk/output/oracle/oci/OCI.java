@@ -11,6 +11,10 @@ public class OCI {
 
 	public native byte[] getLasetMessage(byte[] context);
 
-	public native boolean open(byte[] context, String dbName, String userName, String password, TableInfo tableInfo);
+	public native boolean open(byte[] context, String dbName, String userName, String password);
+
+	public native boolean prepareLoad(byte[] context, TableDefinition tableDefinition);
+
+	public native void close(byte[] context);
 
 }

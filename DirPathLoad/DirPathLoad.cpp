@@ -54,7 +54,7 @@ void freeHandles(OCI_CONTEXT *context)
 	if (context->env != NULL) OCIHandleFree(context->env, OCI_HTYPE_ENV);
 }
 
-int prepareDirPathCtx(OCI_CONTEXT *context, const char *db, const char *user, const char *pass)
+int prepareDirPathCtx(OCI_CONTEXT *context, const char *dbName, const char *userName, const char *password)
 {
 	if (check(context, "OCIEnvCreate", OCIEnvCreate(&context->env, 
 		OCI_THREADED|OCI_OBJECT,
@@ -91,12 +91,12 @@ int prepareDirPathCtx(OCI_CONTEXT *context, const char *db, const char *user, co
 	if (check(context, "OCILogon", OCILogon(context->env,
 		context->err,
 		&context->svc,
-		(const OraText*)user,
-		strlen(user),
-		(const OraText*)pass,
-		strlen(pass),
-		(const OraText*)db, // tnsnames.oraを見に行く。"host:port/db"の形式であればtnsnames.ora不要。
-		strlen(db)))) {
+		(const OraText*)userName,
+		strlen(userName),
+		(const OraText*)password,
+		strlen(password),
+		(const OraText*)dbName, // tnsnames.oraを見に行く。"host:port/db"の形式であればtnsnames.ora不要。
+		strlen(dbName)))) {
 		return ERROR;
 	}
 
@@ -113,9 +113,9 @@ int prepareDirPathCtx(OCI_CONTEXT *context, const char *db, const char *user, co
 	return SUCCEEDED;
 }
 
-int prepareDirPathStream(OCI_CONTEXT *context, const char *table, COL_DEF *colDefs) {
+int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *colDefs) {
 	// ロードオブジェクト名
-	if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, (void*)table, strlen(table), OCI_ATTR_NAME, context->err))) {
+	if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, (void*)tableName, strlen(tableName), OCI_ATTR_NAME, context->err))) {
 		return ERROR;
 	}
 	ub2 cols;

@@ -22,4 +22,8 @@ typedef struct _COL_DEF {
 } COL_DEF;
 
 
-int prepareDirPathCtx(OCI_CONTEXT *context, const char *db, const char *user, const char *pass);
+int prepareDirPathCtx(OCI_CONTEXT *context, const char *dbName, const char *userName, const char *password);
+
+int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *colDefs);
+	
+void freeHandles(OCI_CONTEXT *context);
