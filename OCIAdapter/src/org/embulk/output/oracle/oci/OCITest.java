@@ -1,18 +1,10 @@
-/*
- * $Id: typical.epf 2627 2010-03-18 01:40:13Z tiba $
- */
 package org.embulk.output.oracle.oci;
 
-import java.io.UnsupportedEncodingException;
-import java.sql.SQLException;
+
 
 public class OCITest {
 
 	public static void main(String[] args) throws Exception {
-		ColumnDefinition[] c = new ColumnDefinition[4];
-		Class c1 = ColumnDefinition.class;
-		Class cc = c.getClass();
-
 		OCI oci = new OCI();
 		byte[] context = oci.createContext();
 		boolean succeeded = false;
@@ -22,8 +14,21 @@ public class OCITest {
 				return;
 			}
 
-			TableDefinition tableDefinition = new TableDefinition();
-			tableDefinition.tableName = "EXAMPLE";
+			TableDefinition tableDefinition = new TableDefinition(
+					"EXAMPLE",
+					new ColumnDefinition("ID", ColumnDefinition.SQLT_INT, 4),
+					new ColumnDefinition("NUM", ColumnDefinition.SQLT_INT, 4),
+					new ColumnDefinition("VALUE1", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE2", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE3", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE4", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE5", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE6", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE7", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE8", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE9", ColumnDefinition.SQLT_CHR, 60),
+					new ColumnDefinition("VALUE10", ColumnDefinition.SQLT_CHR, 60)
+					);
 			if (!oci.prepareLoad(context, tableDefinition)) {
 				return;
 			}
@@ -38,6 +43,8 @@ public class OCITest {
 				String s1 = new String(message, "MS932");
 				System.out.println(s1);
 			}
+
+			oci.close(context);
 			/*
 			byte[] b = e.getMessage().getBytes("ISO_8859_1");
 			for (byte bb : b) {

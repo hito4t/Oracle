@@ -71,26 +71,40 @@ JNIEXPORT jboolean JNICALL Java_org_embulk_output_oracle_oci_OCI_prepareLoad
 	const char *tableName = env->GetStringUTFChars(tableNameString, NULL);
 	
 	jfieldID columnsFieldID = env->GetFieldID(tableClass, "columns", "[Lorg/embulk/output/oracle/oci/ColumnDefinition;");
-	jarray columnArray = (jarray)env->GetObjectField(table, columnsFieldID);
+	jobjectArray columnArray = (jobjectArray)env->GetObjectField(table, columnsFieldID);
 	int columnCount = env->GetArrayLength(columnArray);
 
 	jclass columnClass = env->FindClass("Lorg/embulk/output/oracle/oci/ColumnDefinition;");
+	jfieldID columnNameFieldID = env->GetFieldID(columnClass, "columnName", "Ljava/lang/String;");
+	jfieldID columnTypeFieldID = env->GetFieldID(columnClass, "columnType", "I");
+	jfieldID columnSizeFieldID = env->GetFieldID(columnClass, "columnSize", "I");
 
-	COL_DEF *colDefs = new COL_DEF[columnCount];
+	COL_DEF *colDefs = new COL_DEF[columnCount + 1];
 	for (int i = 0; i < columnCount; i++) {
-		//
+		jobject column = env->GetObjectArrayElement(columnArray, i);
+		jstring columnName = (jstring)env->GetObjectField(column, columnNameFieldID);
+		colDefs[i].name = env->GetStringUTFChars(columnName, NULL);
+		colDefs[i].type = env->GetIntField(column, columnTypeFieldID);
+		colDefs[i].size = env->GetIntField(column, columnSizeFieldID);
 	}
+	colDefs[columnCount].name = NULL;
 
-	//env->GetObjectField
+	int result = prepareDirPathStream(context, tableName, colDefs);
 
-	//prepareDirPathStream(
-	printf(tableName);
-	printf("tableName");
+	for (int i = 0; i < columnCount; i++) {
+		jobject column = env->GetObjectArrayElement(columnArray, i);
+		jstring columnName = (jstring)env->GetObjectField(column, columnNameFieldID);
+		env->ReleaseStringUTFChars(columnName, colDefs[i].name);
+	}
 
 	delete[] colDefs;
 	env->ReleaseStringUTFChars(tableNameString, tableName);
 
-	return true;
+	if (result != SUCCEEDED) {
+		return JNI_FALSE;
+	}
+
+	return JNI_TRUE;
 }
 
 

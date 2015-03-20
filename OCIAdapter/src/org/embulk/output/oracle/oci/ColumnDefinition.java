@@ -1,11 +1,19 @@
 package org.embulk.output.oracle.oci;
-/*
- * $Id: typical.epf 2627 2010-03-18 01:40:13Z tiba $
- */
 
 public class ColumnDefinition {
 
-	public String columnName;
-	public int columnType;
-	public int columnSize;
+	public static int SQLT_CHR = 1;
+	public static int SQLT_INT = 3;
+
+	public final String columnName;
+	public final int columnType;
+	public final int columnSize;
+
+
+	public ColumnDefinition(String columnName, int columnType, int columnSize) {
+		this.columnName = columnName;
+		this.columnType = columnType;
+		this.columnSize = columnSize;
+	}
+
 }

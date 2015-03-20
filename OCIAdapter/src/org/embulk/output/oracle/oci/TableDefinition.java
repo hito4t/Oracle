@@ -1,9 +1,14 @@
 package org.embulk.output.oracle.oci;
-/*
- * $Id: typical.epf 2627 2010-03-18 01:40:13Z tiba $
- */
 
 public class TableDefinition {
-	public String tableName;
-	public ColumnDefinition[] columns = {};
+
+	public final String tableName;
+	public final ColumnDefinition[] columns;
+
+
+	public TableDefinition(String tableName, ColumnDefinition... columns) {
+		this.tableName = tableName;
+		this.columns = columns;
+	}
+
 }
