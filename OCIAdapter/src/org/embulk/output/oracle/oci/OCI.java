@@ -15,6 +15,12 @@ public class OCI {
 
 	public native boolean prepareLoad(byte[] context, TableDefinition tableDefinition);
 
+	public native boolean loadBuffer(byte[] context, byte[] buffer, int rowCount);
+
+	public native boolean commit(byte[] context);
+
+	public native boolean rollback(byte[] context);
+
 	public native void close(byte[] context);
 
 }

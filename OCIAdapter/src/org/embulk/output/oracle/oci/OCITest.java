@@ -33,6 +33,28 @@ public class OCITest {
 				return;
 			}
 
+			RowBuffer buffer = new RowBuffer(tableDefinition, 1);
+			buffer.addValue(111);
+			buffer.addValue(9999);
+			buffer.addValue("AAA");
+			buffer.addValue("BBB");
+			buffer.addValue("");
+			buffer.addValue("4");
+			buffer.addValue("5");
+			buffer.addValue("6");
+			buffer.addValue("7");
+			buffer.addValue("8");
+			buffer.addValue("9");
+			buffer.addValue("10");
+
+			if (!oci.loadBuffer(context, buffer.getBuffer(), buffer.getRowCount())) {
+				return;
+			}
+
+			if (!oci.commit(context)) {
+				return;
+			}
+
 			succeeded = true;
 
 

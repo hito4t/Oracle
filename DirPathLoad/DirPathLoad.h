@@ -26,4 +26,10 @@ int prepareDirPathCtx(OCI_CONTEXT *context, const char *dbName, const char *user
 
 int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *colDefs);
 	
+int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int rowCount);
+	
+int commit(OCI_CONTEXT *context);
+	
+int rollback(OCI_CONTEXT *context);
+	
 void freeHandles(OCI_CONTEXT *context);
