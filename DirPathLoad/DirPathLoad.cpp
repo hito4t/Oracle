@@ -113,13 +113,17 @@ int prepareDirPathCtx(OCI_CONTEXT *context, const char *dbName, const char *user
 	return SUCCEEDED;
 }
 
+static int isValid(COL_DEF &colDef) {
+	return colDef.type != 0;
+}
+
 int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *colDefs) {
 	// ロードオブジェクト名
 	if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, (void*)tableName, strlen(tableName), OCI_ATTR_NAME, context->err))) {
 		return ERROR;
 	}
 	ub2 cols;
-	for (cols = 0; colDefs[cols].name != NULL; cols++) ;
+	for (cols = 0; isValid(colDefs[cols]); cols++) ;
 
 	if (check(context, "OCIAttrSet(OCI_ATTR_NUM_COLS)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, &cols, sizeof(ub2), OCI_ATTR_NUM_COLS, context->err))) {
 		return ERROR;
@@ -259,14 +263,14 @@ int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int r
 	//printf("OCI_HTYPE_DIRPATH_COLUMN_ARRAY.OCI_ATTR_NUM_ROWS = %d\r\n", maxRowCount);
 
 	int rowSize = 0;
-	for (int col = 0; colDefs[col].name != NULL; col++) {
+	for (int col = 0; isValid(colDefs[col]); col++) {
 		rowSize += colDefs[col].size;
 	}
 	const char *current = buffer;
 
 	int colArrayRowCount = 0;
 	for (int row = 0; row < rowCount; row++) {
-		for (int col = 0; colDefs[col].name != NULL; col++) {
+		for (int col = 0; isValid(colDefs[col]); col++) {
 			ub4 size = colDefs[col].size;
 			if (colDefs[col].type == SQLT_CHR) {
 				size = strnlen(current, size);
@@ -333,7 +337,7 @@ int loadCSV(OCI_CONTEXT *context, COL_DEF *colDefs, const char *csvFileName)
 	printf("OCI_HTYPE_DIRPATH_COLUMN_ARRAY.OCI_ATTR_NUM_ROWS = %d\r\n", maxRowCount);
 
 	int rowSize = 0;
-	for (int i = 0; colDefs[i].name != NULL; i++) {
+	for (int i = 0; isValid(colDefs[i]); i++) {
 		rowSize += colDefs[i].size;
 	}
 
@@ -473,7 +477,7 @@ static int test(OCI_CONTEXT *context, const char *db, const char *user, const ch
 		{"VALUE8", SQLT_CHR, 60},
 		{"VALUE9", SQLT_CHR, 60},
 		{"VALUE10", SQLT_CHR, 60},
-		{NULL}
+		{NULL, 0, 0}
 	};
 	if (prepareDirPathStream(context, "EXAMPLE", colDefs)) {
 		return ERROR;

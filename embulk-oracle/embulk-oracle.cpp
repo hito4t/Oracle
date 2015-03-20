@@ -23,13 +23,9 @@ static COL_DEF *toColDefs(JNIEnv *env, jbyteArray addrs)
 JNIEXPORT jbyteArray JNICALL Java_org_embulk_output_oracle_oci_OCI_createContext
   (JNIEnv *env, jobject)
 {
-	printf("TEST!\r\n");
-
 	OCI_CONTEXT *context = new OCI_CONTEXT();
 	jbyteArray addrs = env->NewByteArray(sizeof(OCI_CONTEXT*) + sizeof(COL_DEF*));
 	env->SetByteArrayRegion(addrs, 0, sizeof(OCI_CONTEXT*), (jbyte*)&context);
-
-	strcpy(context->message, "testcontext");
 	return addrs;
 }
 
@@ -95,6 +91,8 @@ JNIEXPORT jboolean JNICALL Java_org_embulk_output_oracle_oci_OCI_prepareLoad
 		colDefs[i].size = env->GetIntField(column, columnSizeFieldID);
 	}
 	colDefs[columnCount].name = NULL;
+	colDefs[columnCount].type = 0;
+	colDefs[columnCount].size = 0;
 
 	int result = prepareDirPathStream(context, tableName, colDefs);
 
@@ -102,7 +100,7 @@ JNIEXPORT jboolean JNICALL Java_org_embulk_output_oracle_oci_OCI_prepareLoad
 		jobject column = env->GetObjectArrayElement(columnArray, i);
 		jstring columnName = (jstring)env->GetObjectField(column, columnNameFieldID);
 		env->ReleaseStringUTFChars(columnName, colDefs[i].name);
-		//colDefs[i].name = NULL;
+		colDefs[i].name = NULL;
 	}
 
 	env->SetByteArrayRegion(addrs, sizeof(OCI_CONTEXT*), sizeof(colDefs), (jbyte*)&colDefs);
