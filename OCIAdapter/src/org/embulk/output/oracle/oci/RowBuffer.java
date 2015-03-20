@@ -26,7 +26,7 @@ public class RowBuffer {
 	}
 
 	public void addValue(int value) {
-		if (currentRow >= rowCount) {
+		if (isFull()) {
 			throw new IllegalStateException();
 		}
 
@@ -39,7 +39,7 @@ public class RowBuffer {
 	}
 
 	public void addValue(String value) {
-		if (currentRow >= rowCount) {
+		if (isFull()) {
 			throw new IllegalStateException();
 		}
 
@@ -67,6 +67,16 @@ public class RowBuffer {
 
 	public int getRowCount() {
 		return currentRow;
+	}
+
+	public boolean isFull() {
+		return currentRow >= rowCount;
+	}
+
+	public void clear() {
+		currentPosition = 0;
+		currentRow = 0;
+		currentColumn = 0;
 	}
 
 }

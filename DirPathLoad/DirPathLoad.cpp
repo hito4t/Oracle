@@ -248,7 +248,7 @@ int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int r
 	time_t time0, time1;
 	time(&time0);
 	clock_t clock0 = clock(), clock1;
-	printf("Start at : %s\r\n", ctime(&time0));
+	//printf("Start at : %s\r\n", ctime(&time0));
 	long csvTime = 0;
 	long loadTime = 0;
 
@@ -256,7 +256,7 @@ int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int r
 	if (check(context, "OCIAttrGet(OCI_ATTR_NUM_ROWS)", OCIAttrGet(context->dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &maxRowCount, 0, OCI_ATTR_NUM_ROWS, context->err))) {
 		return ERROR;
 	}
-	printf("OCI_HTYPE_DIRPATH_COLUMN_ARRAY.OCI_ATTR_NUM_ROWS = %d\r\n", maxRowCount);
+	//printf("OCI_HTYPE_DIRPATH_COLUMN_ARRAY.OCI_ATTR_NUM_ROWS = %d\r\n", maxRowCount);
 
 	int rowSize = 0;
 	for (int col = 0; colDefs[col].name != NULL; col++) {
@@ -272,7 +272,7 @@ int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int r
 				size = strnlen(current, size);
 			}
 
-			if (check(context, "OCIDirPathColArrayEntrySet", OCIDirPathColArrayEntrySet(context->dpca, context->err, row, col, (ub1*)current, size, OCI_DIRPATH_COL_COMPLETE))) {
+			if (check(context, "OCIDirPathColArrayEntrySet", OCIDirPathColArrayEntrySet(context->dpca, context->err, colArrayRowCount, col, (ub1*)current, size, OCI_DIRPATH_COL_COMPLETE))) {
 				return ERROR;
 			}
 			current += colDefs[col].size;
@@ -290,7 +290,6 @@ int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int r
 			clock0 = clock();
 			loadTime += clock0 - clock1;
 
-			current = context->buffer;
 			colArrayRowCount = 0;
 		}
 	}
@@ -308,7 +307,7 @@ int loadBuffer(OCI_CONTEXT *context, COL_DEF *colDefs, const char *buffer, int r
 	}
 
 	time(&time1);
-	printf("End at : %s (csv : %d ms, load : %d ms)\r\n", ctime(&time1), csvTime, loadTime);
+	//printf("End at : %s (csv : %d ms, load : %d ms)\r\n", ctime(&time1), csvTime, loadTime);
 
 	return SUCCEEDED;
 }
