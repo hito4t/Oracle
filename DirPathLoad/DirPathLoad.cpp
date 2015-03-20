@@ -1,13 +1,12 @@
 #include "stdafx.h"
 #include <string.h>
 #include <stdio.h>
-#include <oci.h>
 #include <malloc.h>
 #include <time.h>
 #include "DirPathLoad.h"
 
 
-static int check(CONTEXT *context, const char* message, sword result)
+static int check(OCI_CONTEXT *context, const char* message, sword result)
 {
 	strcpy(context->message, "");
 
@@ -43,7 +42,7 @@ static int check(CONTEXT *context, const char* message, sword result)
 	return SUCCEEDED;
 }
 
-void freeHandles(CONTEXT *context)
+void freeHandles(OCI_CONTEXT *context)
 {
 	if (context->csv != NULL) fclose(context->csv);
 	if (context->buffer != NULL) free(context->buffer);
@@ -55,7 +54,7 @@ void freeHandles(CONTEXT *context)
 	if (context->env != NULL) OCIHandleFree(context->env, OCI_HTYPE_ENV);
 }
 
-int prepareDirPathCtx(CONTEXT *context, const char *db, const char *user, const char *pass)
+int prepareDirPathCtx(OCI_CONTEXT *context, const char *db, const char *user, const char *pass)
 {
 	if (check(context, "OCIEnvCreate", OCIEnvCreate(&context->env, 
 		OCI_THREADED|OCI_OBJECT,
@@ -114,7 +113,7 @@ int prepareDirPathCtx(CONTEXT *context, const char *db, const char *user, const 
 	return SUCCEEDED;
 }
 
-int prepareDirPathStream(CONTEXT *context, const char *table, COL_DEF *colDefs) {
+int prepareDirPathStream(OCI_CONTEXT *context, const char *table, COL_DEF *colDefs) {
 	// ロードオブジェクト名
 	if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, (void*)table, strlen(table), OCI_ATTR_NAME, context->err))) {
 		return ERROR;
@@ -207,7 +206,7 @@ static int strToSqlInt(const char *s, int size, char* buffer)
 	return SUCCEEDED;
 }
 
-static int loadRows(CONTEXT *context, ub4 rowCount)
+static int loadRows(OCI_CONTEXT *context, ub4 rowCount)
 {
 	for (ub4 offset = 0; offset < rowCount;) {
 		sword result = OCIDirPathColArrayToStream(context->dpca, context->dp, context->dpstr, context->err, rowCount, offset);
@@ -244,7 +243,7 @@ static int loadRows(CONTEXT *context, ub4 rowCount)
 }
 
 
-int loadCSV(CONTEXT *context, COL_DEF *colDefs, const char *csvFileName)
+int loadCSV(OCI_CONTEXT *context, COL_DEF *colDefs, const char *csvFileName)
 {
 	time_t time0, time1;
 	time(&time0);
@@ -356,7 +355,7 @@ int loadCSV(CONTEXT *context, COL_DEF *colDefs, const char *csvFileName)
 	return SUCCEEDED;
 }
 
-int commit(CONTEXT *context) 
+int commit(OCI_CONTEXT *context) 
 {
 	if (check(context, "OCIDirPathFinish", OCIDirPathFinish(context->dp, context->err))) {
 		return ERROR;
@@ -369,7 +368,7 @@ int commit(CONTEXT *context)
 	return SUCCEEDED;
 }
 
-int rollback(CONTEXT *context) 
+int rollback(OCI_CONTEXT *context) 
 {
 	if (check(context, "OCIDirPathFinish", OCIDirPathAbort(context->dp, context->err))) {
 		return ERROR;
@@ -383,7 +382,7 @@ int rollback(CONTEXT *context)
 }
 
 
-static int test(CONTEXT *context, const char *db, const char *user, const char *pass, const char *csvFileName)
+static int test(OCI_CONTEXT *context, const char *db, const char *user, const char *pass, const char *csvFileName)
 {
 	if (prepareDirPathCtx(context, db, user, pass)) {
 		return ERROR;
@@ -429,7 +428,7 @@ int main(int argc, char* argv[])
 		return ERROR;
 	}
 
-	CONTEXT context;
+	OCI_CONTEXT context;
 	int result = test(&context, argv[1], argv[2], argv[3], argv[4]);
 	if (result == ERROR) {
 		printf("%s\r\n", context.message);

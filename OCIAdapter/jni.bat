@@ -1,0 +1,1 @@
+javah -classpath bin -d ..\embulk-oracle org.embulk.output.oracle.oci.OCI
