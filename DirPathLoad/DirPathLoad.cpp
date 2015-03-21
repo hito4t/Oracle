@@ -124,7 +124,6 @@ int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *c
 	}
 	ub2 cols;
 	for (cols = 0; isValid(colDefs[cols]); cols++) ;
-
 	if (check(context, "OCIAttrSet(OCI_ATTR_NUM_COLS)", OCIAttrSet(context->dp, OCI_HTYPE_DIRPATH_CTX, &cols, sizeof(ub2), OCI_ATTR_NUM_COLS, context->err))) {
 		return ERROR;
 	}
@@ -216,11 +215,6 @@ static int loadRows(OCI_CONTEXT *context, ub4 rowCount)
 		sword result = OCIDirPathColArrayToStream(context->dpca, context->dp, context->dpstr, context->err, rowCount, offset);
 		if (result != OCI_SUCCESS && result != OCI_CONTINUE) {
 			check(context, "OCIDirPathColArrayToStream", result);
-			return ERROR;
-		}
-
-		ub4 temp2;
-		if (check(context, "OCIAttrGet(OCI_ATTR_ROW_COUNT)", OCIAttrGet(context->dpca, OCI_HTYPE_DIRPATH_COLUMN_ARRAY, &temp2, 0, OCI_ATTR_ROW_COUNT, context->err))) {
 			return ERROR;
 		}
 
@@ -503,6 +497,7 @@ int main(int argc, char* argv[])
 	}
 
 	OCI_CONTEXT context;
+	memset(&context, 0, sizeof(OCI_CONTEXT));
 	int result = test(&context, argv[1], argv[2], argv[3], argv[4]);
 	if (result == ERROR) {
 		printf("%s\r\n", context.message);

@@ -23,9 +23,11 @@ static COL_DEF *toColDefs(JNIEnv *env, jbyteArray addrs)
 JNIEXPORT jbyteArray JNICALL Java_org_embulk_output_oracle_oci_OCI_createContext
   (JNIEnv *env, jobject)
 {
+	printf("##context\r\n");
 	OCI_CONTEXT *context = new OCI_CONTEXT();
 	jbyteArray addrs = env->NewByteArray(sizeof(OCI_CONTEXT*) + sizeof(COL_DEF*));
 	env->SetByteArrayRegion(addrs, 0, sizeof(OCI_CONTEXT*), (jbyte*)&context);
+	//env->DeleteLocalRef(addrs);
 	return addrs;
 }
 
@@ -36,6 +38,7 @@ JNIEXPORT jbyteArray JNICALL Java_org_embulk_output_oracle_oci_OCI_getLasetMessa
 	OCI_CONTEXT *context = toContext(env, addrs);
 	jbyteArray message = env->NewByteArray(sizeof(context->message));
 	env->SetByteArrayRegion(message, 0, sizeof(context->message), (jbyte*)context->message);
+	//env->DeleteLocalRef(message);
 	return message;
 }
 

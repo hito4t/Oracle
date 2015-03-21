@@ -1,6 +1,3 @@
-/*
- * $Id: typical.epf 2627 2010-03-18 01:40:13Z xxx $
- */
 package org.embulk.output.oracle.oci;
 
 public class RowBuffer {
