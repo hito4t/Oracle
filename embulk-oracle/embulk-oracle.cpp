@@ -81,26 +81,48 @@ JNIEXPORT jboolean JNICALL Java_org_embulk_output_oracle_oci_OCI_prepareLoad
 	jfieldID columnNameFieldID = env->GetFieldID(columnClass, "columnName", "Ljava/lang/String;");
 	jfieldID columnTypeFieldID = env->GetFieldID(columnClass, "columnType", "I");
 	jfieldID columnSizeFieldID = env->GetFieldID(columnClass, "columnSize", "I");
+	jfieldID columnDateFormatID = env->GetFieldID(columnClass, "columnDateFormat", "Ljava/lang/String;");
 
 	COL_DEF *colDefs = new COL_DEF[columnCount + 1];
 	for (int i = 0; i < columnCount; i++) {
+		COL_DEF &colDef = colDefs[i];
+
 		jobject column = env->GetObjectArrayElement(columnArray, i);
 		jstring columnName = (jstring)env->GetObjectField(column, columnNameFieldID);
 		colDefs[i].name = env->GetStringUTFChars(columnName, NULL);
 		colDefs[i].type = env->GetIntField(column, columnTypeFieldID);
 		colDefs[i].size = env->GetIntField(column, columnSizeFieldID);
+
+		jstring columnDateFormat = (jstring)env->GetObjectField(column, columnDateFormatID);
+		if (columnDateFormat != NULL) {
+			colDef.dateFormat = env->GetStringUTFChars(columnDateFormat, NULL);
+		} else {
+			colDef.dateFormat = NULL;
+		}
+
 	}
+
+	//jni_
 	colDefs[columnCount].name = NULL;
 	colDefs[columnCount].type = 0;
 	colDefs[columnCount].size = 0;
+	colDefs[columnCount].dateFormat = NULL;
 
 	int result = prepareDirPathStream(context, tableName, colDefs);
 
 	for (int i = 0; i < columnCount; i++) {
+		COL_DEF &colDef = colDefs[i];
 		jobject column = env->GetObjectArrayElement(columnArray, i);
+
 		jstring columnName = (jstring)env->GetObjectField(column, columnNameFieldID);
-		env->ReleaseStringUTFChars(columnName, colDefs[i].name);
-		colDefs[i].name = NULL;
+		env->ReleaseStringUTFChars(columnName, colDef.name);
+		colDef.name = NULL;
+
+		if (colDef.dateFormat != NULL) {
+			jstring columnDateFormat = (jstring)env->GetObjectField(column, columnDateFormatID);
+			env->ReleaseStringUTFChars(columnDateFormat, colDef.dateFormat);
+			colDef.dateFormat = NULL;
+		}
 	}
 
 	env->SetByteArrayRegion(addrs, sizeof(OCI_CONTEXT*), sizeof(colDefs), (jbyte*)&colDefs);

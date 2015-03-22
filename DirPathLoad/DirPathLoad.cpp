@@ -134,17 +134,18 @@ int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *c
 	}
 
 	for (int i = 0; i < cols; i++) {
+		COL_DEF &colDef = colDefs[i];
 		OCIParam *column;
 		if (check(context, "OCIParamGet(OCI_DTYPE_PARAM)", OCIParamGet(columns, OCI_DTYPE_PARAM, context->err, (void**)&column, i + 1))) {
 			return ERROR;
 		}
-		if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(column, OCI_DTYPE_PARAM, (void*)colDefs[i].name, strlen(colDefs[i].name), OCI_ATTR_NAME, context->err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_NAME)", OCIAttrSet(column, OCI_DTYPE_PARAM, (void*)colDef.name, strlen(colDef.name), OCI_ATTR_NAME, context->err))) {
 			return ERROR;
 		}
-		if (check(context, "OCIAttrSet(OCI_ATTR_DATA_TYPE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].type, sizeof(ub4), OCI_ATTR_DATA_TYPE, context->err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_DATA_TYPE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDef.type, sizeof(ub4), OCI_ATTR_DATA_TYPE, context->err))) {
 			return ERROR;
 		}
-		if (check(context, "OCIAttrSet(OCI_ATTR_DATA_SIZE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDefs[i].size, sizeof(ub4), OCI_ATTR_DATA_SIZE, context->err))) {
+		if (check(context, "OCIAttrSet(OCI_ATTR_DATA_SIZE)", OCIAttrSet(column, OCI_DTYPE_PARAM, &colDef.size, sizeof(ub4), OCI_ATTR_DATA_SIZE, context->err))) {
 			return ERROR;
 		}
 		/*
@@ -155,6 +156,12 @@ int prepareDirPathStream(OCI_CONTEXT *context, const char *tableName, COL_DEF *c
 			return ERROR;
 		}
 		*/
+
+		if (colDef.dateFormat != NULL) {
+			if (check(context, "OCIAttrSet(OCI_ATTR_DATEFORMAT)", OCIAttrSet(column, OCI_DTYPE_PARAM, (void*)colDef.dateFormat, strlen(colDef.dateFormat), OCI_ATTR_DATEFORMAT, context->err))) {
+				return ERROR;
+			}
+		}
 
 		if (check(context, "OCIDescriptorFree(OCI_DTYPE_PARAM)", OCIDescriptorFree(column, OCI_DTYPE_PARAM))) {
 			return ERROR;
@@ -491,8 +498,6 @@ static int test(OCI_CONTEXT *context, const char *db, const char *user, const ch
 
 int main(int argc, char* argv[])
 {
-	OCIDateTime dl;
-
 	if (argc < 5) {
 		printf("DirPathLoad <db> <user> <password> <csv file name>\r\n");
 		return ERROR;

@@ -19,6 +19,7 @@ typedef struct _COL_DEF {
 	const char *name;
 	ub4 type;
 	ub4 size;
+	const char *dateFormat;
 } COL_DEF;
 
 
