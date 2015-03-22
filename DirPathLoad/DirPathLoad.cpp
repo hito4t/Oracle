@@ -212,6 +212,10 @@ static int strToSqlInt(const char *s, int size, char* buffer)
 static int loadRows(OCI_CONTEXT *context, ub4 rowCount)
 {
 	for (ub4 offset = 0; offset < rowCount;) {
+		if (check(context, "OCIDirPathStreamReset", OCIDirPathStreamReset(context->dpstr, context->err))) {
+			return ERROR;
+		}
+
 		sword result = OCIDirPathColArrayToStream(context->dpca, context->dp, context->dpstr, context->err, rowCount, offset);
 		if (result != OCI_SUCCESS && result != OCI_CONTINUE) {
 			check(context, "OCIDirPathColArrayToStream", result);
@@ -230,10 +234,6 @@ static int loadRows(OCI_CONTEXT *context, ub4 rowCount)
 				return ERROR;
 			}
 			offset += temp;
-		}
-
-		if (check(context, "OCIDirPathStreamReset", OCIDirPathStreamReset(context->dpstr, context->err))) {
-			return ERROR;
 		}
 	}
 
@@ -491,6 +491,8 @@ static int test(OCI_CONTEXT *context, const char *db, const char *user, const ch
 
 int main(int argc, char* argv[])
 {
+	OCIDateTime dl;
+
 	if (argc < 5) {
 		printf("DirPathLoad <db> <user> <password> <csv file name>\r\n");
 		return ERROR;
